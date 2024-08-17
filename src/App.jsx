@@ -2,7 +2,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polygon } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useEffect } from 'react';
-import { fetchAndConvertExcel } from './fetchData';
+import { fetchAndConvertExcel, fetchAndProcessJson } from './fetchData';
 
 const App = () => {
   const [jsonData, setJsonData] = useState(null);
@@ -14,13 +14,13 @@ const App = () => {
   const antennaIcon = L.icon({
     iconUrl: 'antenna.png',
 
-    iconSize:     [25, 25]
+    iconSize: [25, 25]
 });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const json = await fetchAndConvertExcel();
+        const json = await fetchAndProcessJson();
         setJsonData(json);
         setFilteredData(json);
       } catch (error) {
@@ -31,23 +31,65 @@ const App = () => {
     fetchData();
   }, []);
 
+  const parseDate = (dateStr) => {
+    try {
+      const [day, month, year] = dateStr.split(' ')[0].split('-');
+      const [hours, minutes, seconds] = dateStr.split(' ')[1].split(':');
+      const secondsValue = seconds !== undefined ? seconds : "00";
+      const paddedMonth = month.padStart(2, '0');
+      const paddedDay = day.padStart(2, '0');
+      const paddedHours = hours.padStart(2, '0');
+      const paddedMinutes = minutes.padStart(2, '0');
+      const formattedDateStr = `${year}-${paddedMonth}-${paddedDay}T${paddedHours}:${paddedMinutes}:${secondsValue}Z`;
+      const date = new Date(formattedDateStr);
+      if (isNaN(date.getTime())) {
+        throw new Error(`Invalid Date: ${formattedDateStr}`);
+      }
+      return date;
+    } catch (error) {
+      console.error(error);
+      return new Date(); // Retorna la fecha actual en caso de error
+    }
+  };
+  
+  const formatDate = (date) => {
+    // Asume que `date` es un objeto Date y devuelve una cadena en formato 'dd-mm-yyyy'
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const formatDateToDDMMYYYY = (dateStr) => {
+    const [year, day, month] = dateStr.split('-');
+    return `${day}-${month}-${year}`;
+  };
+  
+  
   const filterData = () => {
     if (!jsonData) return;
-
+    const dateAux  = formatDateToDDMMYYYY(date)
+  
     const filtered = jsonData.filter(item => {
-      const itemDate = new Date(item.datetime);
-      const inputDate = new Date(date);
-      const inputTime = time ? new Date(`1970-01-01T${time}:00`) : null;
+      console.log(item.datetime)
+      const itemDate = parseDate(item.datetime);
 
+      const inputDate = new Date(dateAux);
+      // Convertir inputDate a UTC para la comparación
+      const formattedInputDate = formatDate(new Date(Date.UTC(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate())));
+      const formattedItemDate = formatDate(new Date(Date.UTC(itemDate.getUTCFullYear(), itemDate.getUTCMonth(), itemDate.getUTCDate())));
+      console.log(formattedInputDate, formattedItemDate)
+      const inputTime = time ? new Date(`1970-01-01T${time}:00Z`) : null;
+  
       return (
-        (phoneNumber === '' || phoneNumber.split(',').map(s => s.trim()).includes(item.caller)) &&
-        (date === '' || itemDate.toDateString() === inputDate.toDateString()) &&
-        (time === '' || (inputTime && itemDate.getHours() === inputTime.getHours() && itemDate.getMinutes() === inputTime.getMinutes()))
+        (date === '' || formattedItemDate === formattedInputDate) &&
+        (time === '' || (inputTime && itemDate.getUTCHours() === inputTime.getUTCHours() && itemDate.getUTCMinutes() === inputTime.getUTCMinutes()))
       );
     });
-
+  
     setFilteredData(filtered);
   };
+  
 
   const calculateCoveragePolygon = (latitude, longitude, azimuth, horizontalAperture, coverageRadius) => {
     const points = [];
@@ -89,14 +131,14 @@ const App = () => {
     <div>
       <h1>Datos en Mapa</h1>
       <div className="controls">
-        <label htmlFor="phoneNumber">Número de Teléfono:</label>
+        {/* <label htmlFor="phoneNumber">Número de Teléfono:</label>
         <input
           type="text"
           id="phoneNumber"
           value={phoneNumber}
           onChange={e => setPhoneNumber(e.target.value)}
           placeholder="Ingrese número(s) de teléfono (separados por coma)"
-        />
+        /> */}
         <label htmlFor="date">Fecha:</label>
         <input
           type="date"

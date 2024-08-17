@@ -14,11 +14,31 @@ export const fetchAndConvertExcel = async () => {
       const sheet = workbook.Sheets[sheetName];
 
       const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-      
-      const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
-      saveAs(blob, 'data.json');
+
       return json
     } catch (error) {
       console.error('Error al cargar o convertir el archivo:', error);
     }
   };
+
+  export const fetchAndProcessJson = async () => {
+    try {
+        // Cambia la URL al archivo JSON
+        const response = await fetch('/src/assets/json/data.json');
+        
+        // Verifica si la solicitud fue exitosa
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        // Obtén el JSON de la respuesta
+        const json = await response.json();
+
+        // Opcional: Procesa los datos JSON aquí
+        // console.log(json);
+
+        return json;
+    } catch (error) {
+        console.error('Error al cargar o procesar el archivo JSON:', error);
+    }
+};
