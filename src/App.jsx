@@ -2,13 +2,13 @@ import { MapContainer, TileLayer, Marker, LayersControl, Polygon, Tooltip, useMa
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useEffect } from 'react';
-import { fetchAndProcessJson } from './fetchData';
 import chroma from 'chroma-js';
 import MarkerClusterGroup from '@christopherpickering/react-leaflet-markercluster';
 import '@christopherpickering/react-leaflet-markercluster/dist/styles.min.css';
 import './App.css';
+import { data } from './assets/json/data';
 
-const { BaseLayer, Overlay } = LayersControl;
+const { BaseLayer } = LayersControl;
 
 
 const FitMarkersToBounds = ({ markers }) => {
@@ -101,7 +101,7 @@ const App = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const json = await fetchAndProcessJson();
+        const json = data;
         setJsonData(json);
         setFilteredData(json);
       } catch (error) {
