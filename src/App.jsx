@@ -109,6 +109,14 @@ const App = () => {
     fetchData();
   }, []);
 
+  const resetView = () => {
+    setDate('');
+    setTime('');
+    setFilteredData(jsonData); // Reiniciar los datos filtrados a todos los datos
+    setActiveMarker(null);
+    // Puedes opcionalmente reiniciar el estado del mapa aquí si fuera necesario
+  };
+
   const parseDate = (dateStr) => {
     try {
       const [day, month, year] = dateStr.split(' ')[0].split('-');
@@ -221,6 +229,12 @@ const App = () => {
             className="w-full bg-blue-500 hover:bg-blue-700 p-2 rounded font-bold"
           >
             Aplicar Filtros
+          </button>
+          <button
+            onClick={resetView}
+            className="w-full bg-slate-500 hover:bg-slate-800 p-2 rounded font-bold text-white mt-4"
+          >
+            Reiniciar Filtros
           </button>
           <MarkerInfo marker={filteredData[activeMarker]} />
         </div>
