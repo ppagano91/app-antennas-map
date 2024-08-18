@@ -1,15 +1,32 @@
-import { MapContainer, TileLayer, Marker, Popup, Polygon } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polygon, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useEffect } from 'react';
 import { fetchAndProcessJson } from './fetchData';
 import chroma from 'chroma-js';
+import MarkerClusterGroup from '@christopherpickering/react-leaflet-markercluster';
+import '@christopherpickering/react-leaflet-markercluster/dist/styles.min.css';
+import './App.css';
+
+const FitMarkersToBounds = ({ markers }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (markers.length > 0) {
+      const bounds = L.latLngBounds(markers.map(marker => [marker.latitude, marker.longitude]));
+      map.fitBounds(bounds);
+    }
+  }, [markers, map]);
+
+  return null;
+};
 
 const App = () => {
   const [jsonData, setJsonData] = useState(null);
   const [filteredData, setFilteredData] = useState([]);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [activeMarker, setActiveMarker] = useState(null);
 
   const antennaIcon = L.icon({
     iconUrl: 'antenna.png',
@@ -34,20 +51,8 @@ const App = () => {
     try {
       const [day, month, year] = dateStr.split(' ')[0].split('-');
       const [hours, minutes, seconds] = dateStr.split(' ')[1].split(':');
-
-      const paddedMonth = month.padStart(2, '0');
-      const paddedDay = day.padStart(2, '0');
-      const paddedHours = hours.padStart(2, '0');
-      const paddedMinutes = minutes.padStart(2, '0');
-      const secondsValue = seconds !== undefined ? seconds.padStart(2, '0') : "00";
-
-      const formattedDateStr = `${year}-${paddedMonth}-${paddedDay}T${paddedHours}:${paddedMinutes}:${secondsValue}Z`;
-      const date = new Date(formattedDateStr);
-
-      if (isNaN(date.getTime())) {
-        throw new Error(`Invalid Date: ${formattedDateStr}`);
-      }
-      return date;
+      const formattedDateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${seconds.padStart(2,'0')}Z`;
+      return new Date(formattedDateStr);
     } catch (error) {
       console.error(error);
       return new Date();
@@ -58,27 +63,16 @@ const App = () => {
     const day = String(date.getUTCDate()).padStart(2, '0');
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const year = date.getUTCFullYear();
-
-    return `${day}-${month}-${year}`;
-  };
-
-  const formatDateToDDMMYYYY = (dateStr) => {
-    const [year, day, month] = dateStr.split('-');
     return `${day}-${month}-${year}`;
   };
 
   const filterData = () => {
     if (!jsonData) return;
-    const dateAux = formatDateToDDMMYYYY(date);
-
+    const formattedInputDate = formatDate(new Date(date));
     const filtered = jsonData.filter(item => {
       const itemDate = parseDate(item.datetime);
-      const inputDate = new Date(dateAux);
-      const formattedInputDate = formatDate(new Date(Date.UTC(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate())));
-      const formattedItemDate = formatDate(new Date(Date.UTC(itemDate.getUTCFullYear(), itemDate.getUTCMonth(), itemDate.getUTCDate())));
-
+      const formattedItemDate = formatDate(itemDate);
       const inputTime = time ? new Date(`1970-01-01T${time}:00Z`) : null;
-
       return (
         (date === '' || formattedItemDate === formattedInputDate) &&
         (time === '' || (inputTime && itemDate.getUTCHours() === inputTime.getUTCHours() && itemDate.getUTCMinutes() === inputTime.getUTCMinutes()))
@@ -92,7 +86,6 @@ const App = () => {
     const startAngle = azimuth - aperture / 2;
     const endAngle = azimuth + aperture / 2;
     const numPoints = 50;
-
     for (let i = 0; i <= numPoints; i++) {
       const angle = startAngle + (i * (endAngle - startAngle)) / numPoints;
       const radians = (Math.PI / 180) * angle;
@@ -100,31 +93,36 @@ const App = () => {
       const pointLng = lng + (radius * Math.sin(radians)) / (111320 * Math.cos((Math.PI / 180) * lat));
       points.push([pointLat, pointLng]);
     }
-
     points.push([lat, lng]);
-
     return points;
   };
 
-  const minCoverage = filteredData.length > 0 ? Math.min(...filteredData.map(item => item.coverageRadius)) : 0;
-  const maxCoverage = filteredData.length > 0 ? Math.max(...filteredData.map(item => item.coverageRadius)) : 1;
-
+  const minCoverage = Math.min(...filteredData.map(item => item.coverageRadius));
+  const maxCoverage = Math.max(...filteredData.map(item => item.coverageRadius));
   const colorScale = chroma.scale('Reds').domain([minCoverage, maxCoverage]);
 
-  const markersAndPolygons = filteredData.map((item, index) => {
+  const markers = filteredData.map((item, index) => {
     const polygonPoints = generatePolygonPoints(item.latitude, item.longitude, item.azimuth, item.horizontalAperture, item.coverageRadius);
     const color = colorScale(item.coverageRadius).hex();
 
+    const handleMarkerClick = () => {
+      setActiveMarker(activeMarker === index ? null : index);
+    };
+
     return (
       <div key={index}>
-        <Marker position={[item.latitude, item.longitude]} icon={antennaIcon}>
-          <Popup>
-            Teléfono: {item.caller}<br />
-            Fecha y Hora: {item.datetime}<br />
-            Lat: {item.latitude}, Lng: {item.longitude}
-          </Popup>
+        <Marker position={[item.latitude, item.longitude]} icon={antennaIcon} eventHandlers={{ click: handleMarkerClick }}>
+          <Tooltip className="custom-tooltip" direction="top" offset={[0, -10]}>
+            <div className='m-1'>
+              <div className='flex flex-row justify-between gap-2 m-1'><strong>Teléfono:</strong> <div>{item.caller}</div></div>
+              <div className='flex flex-row justify-between gap-2 m-1'><strong>Fecha y Hora:</strong> <div>{item.datetime}</div></div>
+              <div className='flex flex-row justify-between gap-2 m-1'><strong>Coordenadas:</strong> <div>{item.latitude}, {item.longitude}</div></div>
+            </div>
+          </Tooltip>
         </Marker>
-        <Polygon positions={polygonPoints} pathOptions={{ color: color, fillOpacity: 0.4, stroke: false }} />
+        {activeMarker === index && (
+          <Polygon positions={polygonPoints} pathOptions={{ color: color, fillOpacity: 0.4, stroke:false }} />
+        )}
       </div>
     );
   });
@@ -134,8 +132,9 @@ const App = () => {
       <header className="bg-gray-800 p-4 shadow-md">
         <h1 className="text-center text-3xl font-bold">Geolocalización de Antenas</h1>
       </header>
-      <div className="container mx-auto p-4">
-        <div className="controls bg-gray-700 p-4 rounded-lg shadow-lg mb-4">
+      <div className="container mx-auto p-4 flex flex-row gap-4">
+        <div className="controls bg-gray-700 p-4 rounded-lg shadow-lg w-1/4">
+          <h2 className="">Filtros</h2>
           <label htmlFor="date" className="block mb-2">Fecha:</label>
           <input
             type="date"
@@ -156,25 +155,30 @@ const App = () => {
             onClick={filterData}
             className="w-full bg-blue-500 hover:bg-blue-700 p-2 rounded font-bold"
           >
-            Filtrar
+            Aplicar Filtros
           </button>
         </div>
-        {jsonData ? (
-          <MapContainer
-            center={filteredData.length > 0 ? [filteredData[0].latitude, filteredData[0].longitude] : [51.505, -0.09]}
-            zoom={13}
-            style={{ height: '80vh', width: '100%' }}
-            className="rounded-lg shadow-lg"
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
-            {markersAndPolygons}
-          </MapContainer>
-        ) : (
-          <p className="text-center">Cargando datos...</p>
-        )}
+        <div className="flex-1">
+          {jsonData ? (
+            <MapContainer
+              center={filteredData.length > 0 ? [filteredData[0].latitude, filteredData[0].longitude] : [51.505, -0.09]}
+              zoom={13}
+              style={{ height: '80vh', width: '100%' }}
+              className="rounded-lg shadow-lg"
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
+              <MarkerClusterGroup>
+                {markers}
+              </MarkerClusterGroup>
+              <FitMarkersToBounds markers={filteredData} />
+            </MapContainer>
+          ) : (
+            <p className="text-center">Cargando datos...</p>
+          )}
+        </div>
       </div>
     </div>
   );

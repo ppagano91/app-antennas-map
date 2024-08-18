@@ -1,0 +1,35 @@
+.custom-tooltip .leaflet-tooltip-content {
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 14px;
+    padding: 8px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+}
+
+.custom-tooltip .leaflet-tooltip {
+    border: none;
+}
+
+.custom-tooltip .leaflet-tooltip-top:before,
+.custom-tooltip .leaflet-tooltip-bottom:before,
+.custom-tooltip .leaflet-tooltip-left:before,
+.custom-tooltip .leaflet-tooltip-right:before {
+    border: none;
+}
+
+.custom-tooltip .leaflet-tooltip-content {
+    /* Estilos anteriores */
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
