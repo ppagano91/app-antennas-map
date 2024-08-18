@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup, Polygon, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, LayersControl, Polygon, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useEffect } from 'react';
@@ -7,6 +7,8 @@ import chroma from 'chroma-js';
 import MarkerClusterGroup from '@christopherpickering/react-leaflet-markercluster';
 import '@christopherpickering/react-leaflet-markercluster/dist/styles.min.css';
 import './App.css';
+
+const { BaseLayer, Overlay } = LayersControl;
 
 
 const FitMarkersToBounds = ({ markers }) => {
@@ -89,6 +91,7 @@ const App = () => {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [activeMarker, setActiveMarker] = useState(null);
+  const [phoneNumbers, setPhoneNumbers] = useState('');
 
   const antennaIcon = L.icon({
     iconUrl: 'antenna.png',
@@ -139,15 +142,20 @@ const App = () => {
   const filterData = () => {
     if (!jsonData) return;
     const formattedInputDate = formatDate(new Date(date));
+    const phoneNumbersArray = phoneNumbers.split(',').map(num => num.trim());
+    
     const filtered = jsonData.filter(item => {
+      console.log(phoneNumbersArray.includes(item.caller))
       const itemDate = parseDate(item.datetime);
       const formattedItemDate = formatDate(itemDate);
       const inputTime = time ? new Date(`1970-01-01T${time}:00Z`) : null;
       return (
         (date === '' || formattedItemDate === formattedInputDate) &&
-        (time === '' || (inputTime && itemDate.getUTCHours() === inputTime.getUTCHours() && itemDate.getUTCMinutes() === inputTime.getUTCMinutes()))
+        (time === '' || (inputTime && itemDate.getUTCHours() === inputTime.getUTCHours() && itemDate.getUTCMinutes() === inputTime.getUTCMinutes())) &&
+        (phoneNumbers === '' || phoneNumbersArray.includes(item.caller.toString()))
       );
     });
+  
     setFilteredData(filtered);
   };
 
@@ -169,7 +177,7 @@ const App = () => {
 
   const minCoverage = Math.min(...filteredData.map(item => item.coverageRadius));
   const maxCoverage = Math.max(...filteredData.map(item => item.coverageRadius));
-  const colorScale = chroma.scale('Reds').domain([minCoverage, maxCoverage]);
+  const colorScale = chroma.scale('YlOrRd').domain([minCoverage, maxCoverage]);
 
   const markers = filteredData.map((item, index) => {
     const polygonPoints = generatePolygonPoints(item.latitude, item.longitude, item.azimuth, item.horizontalAperture, item.coverageRadius);
@@ -207,7 +215,18 @@ const App = () => {
       </header>
       <div className="container mx-auto p-4 flex flex-row gap-4">
         <div className="controls bg-gray-700 p-4 rounded-lg shadow-lg w-1/4">
-          <h2 className="">Filtros</h2>
+          <h2 className="text-center font-bold m-1">Filtros</h2>
+          <label htmlFor="phones" className="block">Números de Teléfono: </label>
+          <span className='text-xs mb-2'>(separados por comas)</span>
+          <input
+            type="text"
+            id="phones"
+            placeholder='1111111, 5050505'
+            value={phoneNumbers}
+            onChange={e => setPhoneNumbers(e.target.value)}
+            className="block w-full mb-4 p-2 bg-gray-800 rounded text-white"
+          />
+          
           <label htmlFor="date" className="block mb-2">Fecha:</label>
           <input
             type="date"
@@ -240,15 +259,25 @@ const App = () => {
         </div>
         <div className="flex-1">
         <MapContainer
-              center={filteredData.length > 0 ? [filteredData[0].latitude, filteredData[0].longitude] : [51.505, -0.09]}
-              zoom={13}
-              style={{ height: '80vh', width: '100%' }}
-              className="rounded-lg shadow-lg"
-            >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
+          center={filteredData.length > 0 ? [filteredData[0].latitude, filteredData[0].longitude] : [51.505, -0.09]}
+          zoom={13}
+          style={{ height: '80vh', width: '100%' }}
+          className="rounded-lg shadow-lg"
+        >
+          <LayersControl position="topright">
+        <BaseLayer checked name="Mapa Base">
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+        </BaseLayer>
+        <BaseLayer name="Satélite">
+          <TileLayer
+            url='https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg'
+            attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+          />
+        </BaseLayer>
+      </LayersControl>
             <MarkerClusterGroup chunkedLoading>
               {markers}
             </MarkerClusterGroup>
