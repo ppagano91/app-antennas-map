@@ -21,6 +21,19 @@ const FitMarkersToBounds = ({ markers }) => {
   return null;
 };
 
+const ZoomToMarker = ({ position, polygonPoints }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (position) {
+      const bounds = L.latLngBounds(polygonPoints);
+      map.flyToBounds(bounds, { padding: [50, 50] });
+    }
+  }, [position, polygonPoints, map]);
+
+  return null;
+};
+
 const App = () => {
   const [jsonData, setJsonData] = useState(null);
   const [filteredData, setFilteredData] = useState([]);
@@ -51,7 +64,7 @@ const App = () => {
     try {
       const [day, month, year] = dateStr.split(' ')[0].split('-');
       const [hours, minutes, seconds] = dateStr.split(' ')[1].split(':');
-      const formattedDateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${seconds.padStart(2,'0')}Z`;
+      const formattedDateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours ? hours.padStart(2, '0') : "00"}:${minutes ? minutes.padStart(2, '0') : "00"}:${seconds ? seconds.padStart(2,'0') : "00"}Z`;
       return new Date(formattedDateStr);
     } catch (error) {
       console.error(error);
@@ -121,7 +134,10 @@ const App = () => {
           </Tooltip>
         </Marker>
         {activeMarker === index && (
-          <Polygon positions={polygonPoints} pathOptions={{ color: color, fillOpacity: 0.4, stroke:false }} />
+          <>
+            <Polygon positions={polygonPoints} pathOptions={{ color: color, fillOpacity: 0.4, stroke:false }} />
+            <ZoomToMarker position={[item.latitude, item.longitude]} polygonPoints={polygonPoints} />
+          </>
         )}
       </div>
     );
