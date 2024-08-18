@@ -1,10 +1,9 @@
 import * as XLSX from 'xlsx';
-// import { saveAs } from 'file-saver';
 
 
 export const fetchAndConvertExcel = async () => {
     try {
-      const response = await fetch('/src/assets/xlsx/Archivo Demo Datos.xlsx');
+      const response = await fetch('/assets/xlsx/Archivo Demo Datos.xlsx');
       const arrayBuffer = await response.arrayBuffer();
 
       const data = new Uint8Array(arrayBuffer);
@@ -24,7 +23,7 @@ export const fetchAndConvertExcel = async () => {
   export const fetchAndProcessJson = async () => {
     try {
         // Cambia la URL al archivo JSON
-        const response = await fetch('/src/assets/json/data.json');
+        const response = await fetch('/assets/json/data.json');
         
         // Verifica si la solicitud fue exitosa
         if (!response.ok) {
