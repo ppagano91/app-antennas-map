@@ -141,8 +141,8 @@ const App = () => {
       <header className="bg-gray-800 p-4 shadow-md">
         <h1 className="text-center text-3xl font-bold">Geolocalización de Antenas</h1>
       </header>
-      <div className="container mx-auto p-4 flex flex-row gap-4">
-        <div className="controls bg-gray-700 p-4 rounded-lg shadow-lg w-1/4">
+      <div className="mx-auto p-4 flex flex-col lg:flex-row gap-4 lg:container">
+        <div className="controls bg-gray-700 p-4 rounded-lg shadow-lg w-full lg:w-1/4">
           <h2 className="text-center font-bold m-1">Filtros</h2>
           <label htmlFor="phones" className="block">Números de Teléfono: </label>
           <span className='text-xs mb-2'>(separados por comas)</span>
